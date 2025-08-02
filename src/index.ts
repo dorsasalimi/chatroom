@@ -5,6 +5,11 @@ import cors from "cors";
 import fetch, { RequestInit, Response } from "node-fetch";
 import jwt from "jsonwebtoken";
 import dotenv from "dotenv";
+import messagesRouter from "./routes/messages";
+import sendmessageRouter from "./routes/sendmessage";
+import usersRouter from "./routes/users";
+import chatroomRouter from "./routes/chatroom";
+import getchatroomRouter from "./routes/getchatroom";
 
 dotenv.config();
 
@@ -22,6 +27,12 @@ const AUTH_SECRET = process.env.AUTH_SECRET || "this-is-a-secure-secret";
 
 app.use(cors());
 app.use(express.json());
+app.use('/messages', messagesRouter);
+app.use('/sendmessages', sendmessageRouter);
+app.use('/users', usersRouter);
+app.use('/chatroom', chatroomRouter);
+app.use('/getchatroom', getchatroomRouter);
+
 
 type GraphQLVariables = Record<string, any>;
 
