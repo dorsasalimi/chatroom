@@ -1,5 +1,5 @@
 import { Router, Request, Response } from "express";
-import { graphqlRequest } from "../lib/graphqlClient"; // your existing client
+import { graphqlRequest } from "../lib/graphqlClient";
 
 const router = Router();
 
@@ -17,8 +17,13 @@ router.post("/", async (req: Request, res: Response) => {
           id
           content
           createdAt
-          sender { id name }
-          chatRoom { id }
+          sender {
+            id
+            name
+          }
+          chatRoom {
+            id
+          }
         }
       }
     `;
@@ -33,13 +38,23 @@ router.post("/", async (req: Request, res: Response) => {
 
     const result = await graphqlRequest(mutation, variables);
 
-    const rawMessage = result.data.createMessage;
+    if (!result?.createMessage) {
+      console.error("❌ createMessage is undefined:", result);
+      return res.status(500).json({ error: "Missing createMessage result" });
+    }
+
+    const rawMessage = result.createMessage;
+    console.log("Message created with date:", rawMessage.createdAt);
+
     const normalizedMessage = {
       id: rawMessage.id,
       content: rawMessage.content,
-      createdAt: rawMessage.createdAt,
-      sender: rawMessage.sender,
-      chatRoomId: rawMessage.chatRoom.id, // flatten this
+      createdAt: rawMessage.createdAt ?? new Date().toISOString(),
+      sender: {
+        id: rawMessage.sender.id,
+        name: rawMessage.sender.name,
+      },
+      chatRoomId: rawMessage.chatRoom.id,
     };
 
     res.json(normalizedMessage);
@@ -48,6 +63,5 @@ router.post("/", async (req: Request, res: Response) => {
     res.status(500).json({ error: "Server error creating message." });
   }
 });
-
 
 export default router;

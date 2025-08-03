@@ -14,13 +14,31 @@ export async function graphqlRequest<T = any>(
     body: JSON.stringify({ query, variables }),
   });
 
-  const json = await response.json();
+  let json: any;
 
-  if (json.errors) {
-    console.error("GraphQL errors:", json.errors);
-    throw new Error(JSON.stringify(json.errors));
+  try {
+    json = await response.json();
+  } catch (err) {
+    console.error("❌ Failed to parse GraphQL response JSON:", err);
+    throw new Error("Failed to parse GraphQL response.");
   }
 
-  // Return ONLY the "data" part, so caller receives `{ users: [...] }` etc.
+  if (!response.ok || json.errors) {
+    console.error("❌ GraphQL request failed:", {
+      status: response.status,
+      errors: json.errors,
+      response: json,
+    });
+    throw new Error(
+      `GraphQL request failed: ${response.statusText} - ${JSON.stringify(
+        json.errors || json
+      )}`
+    );
+  }
+
+  if (!json.data) {
+    throw new Error("❌ GraphQL response missing 'data'");
+  }
+
   return json.data;
 }

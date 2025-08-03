@@ -28,7 +28,7 @@ const AUTH_SECRET = process.env.AUTH_SECRET || "this-is-a-secure-secret";
 app.use(cors());
 app.use(express.json());
 app.use('/messages', messagesRouter);
-app.use('/sendmessages', sendmessageRouter);
+app.use('/sendmessage', sendmessageRouter);
 app.use('/users', usersRouter);
 app.use('/chatroom', chatroomRouter);
 app.use('/getchatroom', getchatroomRouter);
