@@ -32,11 +32,22 @@ router.post("/", async (req: Request, res: Response) => {
     };
 
     const result = await graphqlRequest(mutation, variables);
-    res.json(result.data.createMessage);
+
+    const rawMessage = result.data.createMessage;
+    const normalizedMessage = {
+      id: rawMessage.id,
+      content: rawMessage.content,
+      createdAt: rawMessage.createdAt,
+      sender: rawMessage.sender,
+      chatRoomId: rawMessage.chatRoom.id, // flatten this
+    };
+
+    res.json(normalizedMessage);
   } catch (err: any) {
     console.error("Failed to create message:", err);
     res.status(500).json({ error: "Server error creating message." });
   }
 });
+
 
 export default router;
