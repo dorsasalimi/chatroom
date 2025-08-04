@@ -51,6 +51,14 @@ router.post("/", async (req: Request, res: Response) => {
           chatRoom {
             id
           }
+          replyTo {
+        id
+        content
+        sender {
+          id
+          name
+        }
+      }
         }
       }
     `;
@@ -90,6 +98,16 @@ router.post("/", async (req: Request, res: Response) => {
         imageUrl: fullImageUrl,
       },
       chatRoomId: rawMessage.chatRoom.id,
+      replyTo: rawMessage.replyTo
+        ? {
+            id: rawMessage.replyTo.id,
+            content: rawMessage.replyTo.content,
+            sender: {
+              id: rawMessage.replyTo.sender.id,
+              name: rawMessage.replyTo.sender.name,
+            },
+          }
+        : undefined,
     };
 
     res.json(normalizedMessage);
