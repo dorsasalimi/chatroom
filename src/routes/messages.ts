@@ -1,3 +1,4 @@
+//src/routes/messages/ts
 import { Router, Request, Response } from "express";
 import { graphqlRequest } from "../lib/graphqlClient";
 import jwt from "jsonwebtoken";
@@ -20,6 +21,14 @@ interface Message {
     name: string;
     imageUrl?: string;
   };
+  replyTo: {
+    id: string;
+    content: string;
+    sender: {
+      id:string;
+      name: string;
+    }
+  }
 }
 
 // GET /messages/:chatRoomId - fetch messages for a chat room
@@ -31,29 +40,59 @@ router.get("/:chatRoomId", async (req: Request, res: Response) => {
 
   try {
     const query = `
-      query GetMessages($chatRoomId: IDFilter!) {
-        messages(where: { chatRoom: { id: $chatRoomId } }, orderBy: { createdAt: asc }) {
+  query GetMessages($chatRoomId: IDFilter!) {
+    messages(
+      where: { chatRoom: { id: $chatRoomId } }
+      orderBy: { createdAt: asc }
+    ) {
+      id
+      content
+      createdAt
+      sender {
+        id
+        name
+        imageUrl
+      }
+      replyTo {
+        id
+        content
+        sender {
           id
-          content
-          createdAt
-          sender { id name imageUrl }
+          name
         }
       }
-    `;
+    }
+  }
+`;
 
     const variables = {
       chatRoomId: { equals: chatRoomId },
     };
 
-    const data = await graphqlRequest<{ messages: Message[] }>(query, variables);
+    const data = await graphqlRequest<{ messages: Message[] }>(
+      query,
+      variables
+    );
 
     // Map each message sender's imageUrl to full URL if exists
-    const messagesWithFullImageUrl = data.messages.map(msg => ({
+    const messagesWithFullImageUrl = data.messages.map((msg) => ({
       ...msg,
       sender: {
         ...msg.sender,
-        imageUrl: msg.sender.imageUrl ? CMS_BASE_URL + msg.sender.imageUrl : undefined,
+        imageUrl: msg.sender.imageUrl
+          ? CMS_BASE_URL + msg.sender.imageUrl
+          : undefined,
       },
+      replyTo: msg.replyTo
+        ? {
+            id: msg.replyTo.id,
+            content: msg.replyTo.content,
+            sender: {
+              id: msg.replyTo.sender.id,
+              name: msg.replyTo.sender.name,
+            },
+          }
+        : undefined,
     }));
 
     return res.json({ messages: messagesWithFullImageUrl });
@@ -85,17 +124,18 @@ router.delete("/:id", async (req: AuthenticatedRequest, res: Response) => {
       }
     `;
 
-    const checkResult = await graphqlRequest<{ message: { sender: { id: string } } }>(
-      checkQuery,
-      { messageId }
-    );
+    const checkResult = await graphqlRequest<{
+      message: { sender: { id: string } };
+    }>(checkQuery, { messageId });
 
     if (!checkResult.message) {
       return res.status(404).json({ error: "Message not found" });
     }
 
     if (checkResult.message.sender.id !== userId) {
-      return res.status(403).json({ error: "You are not the sender of this message" });
+      return res
+        .status(403)
+        .json({ error: "You are not the sender of this message" });
     }
 
     // 2) Delete the message
@@ -108,7 +148,7 @@ router.delete("/:id", async (req: AuthenticatedRequest, res: Response) => {
     `;
 
     const variables = {
-      where: { id: messageId }
+      where: { id: messageId },
     };
 
     const result = await graphqlRequest(mutation, variables);

@@ -1,3 +1,4 @@
+//src/routes/sendmessage.ts
 import { Router, Request, Response } from "express";
 import { graphqlRequest } from "../lib/graphqlClient";
 import jwt from "jsonwebtoken";
@@ -26,7 +27,7 @@ router.post("/", async (req: Request, res: Response) => {
     return res.status(401).json({ error: "Invalid or expired token." });
   }
 
-  const { chatRoomId, content, senderId } = req.body;
+  const { chatRoomId, content, senderId, replyToId } = req.body;
 
   // Enforce senderId must match token
   if (!chatRoomId || !content || !senderId || senderId !== decoded?.id) {
@@ -53,14 +54,17 @@ router.post("/", async (req: Request, res: Response) => {
         }
       }
     `;
-
-    const variables = {
+    const variables: any = {
       data: {
         content,
         chatRoom: { connect: { id: chatRoomId } },
         sender: { connect: { id: senderId } },
       },
     };
+
+    if (replyToId) {
+      variables.data.replyTo = { connect: { id: replyToId } };
+    }
 
     const result = await graphqlRequest(mutation, variables, token); // pass token for backend auth
 
