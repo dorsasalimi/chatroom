@@ -1,13 +1,38 @@
 import { Router, Request, Response } from "express";
 import { graphqlRequest } from "../lib/graphqlClient";
+import jwt from "jsonwebtoken";
 
 const router = Router();
 
+// Replace with your actual JWT secret
+const AUTH_SECRET = process.env.AUTH_SECRET || "this-is-a-secure-secret";
+const CMS_BASE_URL = "http://localhost:3001";
+
 router.post("/", async (req: Request, res: Response) => {
+  const authHeader = req.headers.authorization;
+
+  if (!authHeader || !authHeader.startsWith("Bearer ")) {
+    return res
+      .status(401)
+      .json({ error: "Authorization token missing or malformed." });
+  }
+
+  const token = authHeader.split(" ")[1];
+
+  let decoded: any;
+  try {
+    decoded = jwt.verify(token, AUTH_SECRET);
+  } catch (err) {
+    return res.status(401).json({ error: "Invalid or expired token." });
+  }
+
   const { chatRoomId, content, senderId } = req.body;
 
-  if (!chatRoomId || !content || !senderId) {
-    return res.status(400).json({ error: "Missing fields in request." });
+  // Enforce senderId must match token
+  if (!chatRoomId || !content || !senderId || senderId !== decoded?.id) {
+    return res
+      .status(400)
+      .json({ error: "Missing or invalid fields in request." });
   }
 
   try {
@@ -20,6 +45,7 @@ router.post("/", async (req: Request, res: Response) => {
           sender {
             id
             name
+            imageUrl
           }
           chatRoom {
             id
@@ -36,7 +62,7 @@ router.post("/", async (req: Request, res: Response) => {
       },
     };
 
-    const result = await graphqlRequest(mutation, variables);
+    const result = await graphqlRequest(mutation, variables, token); // pass token for backend auth
 
     if (!result?.createMessage) {
       console.error("❌ createMessage is undefined:", result);
@@ -44,7 +70,11 @@ router.post("/", async (req: Request, res: Response) => {
     }
 
     const rawMessage = result.createMessage;
-    console.log("Message created with date:", rawMessage.createdAt);
+
+    // Prefix the imageUrl with CMS base URL if exists
+    const fullImageUrl = rawMessage.sender.imageUrl
+      ? CMS_BASE_URL + rawMessage.sender.imageUrl
+      : undefined;
 
     const normalizedMessage = {
       id: rawMessage.id,
@@ -53,6 +83,7 @@ router.post("/", async (req: Request, res: Response) => {
       sender: {
         id: rawMessage.sender.id,
         name: rawMessage.sender.name,
+        imageUrl: fullImageUrl,
       },
       chatRoomId: rawMessage.chatRoom.id,
     };

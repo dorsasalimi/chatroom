@@ -1,15 +1,35 @@
-import express from 'express';
+import express, { Request } from 'express';
 import { graphqlRequest } from '../lib/graphqlClient';
+
+interface AuthRequest extends Request {
+  user?: {
+    id: string;
+    name?: string;
+    email?: string;
+    role?: {
+      id: string;
+      name: string;
+    };
+  };
+}
 
 const router = express.Router();
 
-router.post('/', async (req, res) => {
+router.post('/', async (req: AuthRequest, res) => {
   try {
     const { name, participantIds } = req.body;
+    const creatorId = req.user?.id;
 
-    if (!participantIds || participantIds.length < 2) {
-      return res.status(400).json({ error: 'At least two participants required' });
+    if (!creatorId) {
+      return res.status(401).json({ error: 'Unauthorized: missing user ID' });
     }
+
+    if (!participantIds || !Array.isArray(participantIds)) {
+      return res.status(400).json({ error: 'participantIds must be an array' });
+    }
+
+    // Include creator in the participants list
+    const allParticipantIds = Array.from(new Set([...participantIds, creatorId]));
 
     const mutation = `
       mutation CreateChatRoom($name: String!, $participants: [UserWhereUniqueInput!]!) {
@@ -31,7 +51,7 @@ router.post('/', async (req, res) => {
 
     const variables = {
       name,
-      participants: participantIds.map((id: string) => ({ id })),
+      participants: allParticipantIds.map((id: string) => ({ id })),
     };
 
     console.log('🚀 Sending mutation with variables:', variables);
