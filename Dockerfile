@@ -1,16 +1,16 @@
-# --- deps ---
-    FROM node:20-alpine AS deps
-    WORKDIR /app
-    COPY package.json package-lock.json* ./
-    RUN npm ci
-    
-    # --- runner ---
-    FROM node:20-alpine AS runner
-    WORKDIR /app
-    ENV NODE_ENV=production
-    ENV PORT=3000
-    # فقط فایل‌های لازم برای اجرا
-    COPY --from=build /app ./
-    EXPOSE 3000
-    CMD ["npm", "run", "start"]
-    
+FROM node:20-alpine
+
+ENV NODE_ENV=production
+WORKDIR /usr/src/app
+
+COPY package*.json ./
+# چون tsx در dependencies است، نصب می‌شود
+RUN npm ci --omit=dev
+
+COPY . .
+
+ENV PORT=3000
+EXPOSE 3000
+
+# اگر ورودی‌ات مثلاً src/index.ts است اصلاح کن
+CMD ["npx", "tsx", "src/index.ts"]
