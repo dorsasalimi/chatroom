@@ -18,12 +18,12 @@ const app = express();
 const server = http.createServer(app);
 const io = new Server(server, {
   cors: {
-    origin: "http://localhost:3001", // Your CMS frontend
+    origin: process.env.NEXT_PUBLIC_CMS_URL || "http://localhost:3001/", // Your CMS frontend
     credentials: true,
   },
 });
 
-const GRAPHQL_ENDPOINT = "http://localhost:3000/api/graphql";
+const GRAPHQL_ENDPOINT = process.env.NEXT_PUBLIC_GRAPHQL_URL || "http://localhost:3000/api/graphql";
 const AUTH_SECRET = process.env.AUTH_SECRET || "this-is-a-secure-secret";
 
 app.use(cors());
