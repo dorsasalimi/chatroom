@@ -7,7 +7,7 @@ import jwt from "jsonwebtoken";
 import dotenv from "dotenv";
 import { authMiddleware } from "./middleware/authMiddleware";
 import messagesRouter from "./routes/messages";
-import sendmessageRouter from "./routes/sendmessage";
+import createSendMessageRouter from "./routes/sendmessage";
 import usersRouter from "./routes/users";
 import chatroomRouter from "./routes/chatroom";
 import getchatroomRouter from "./routes/getchatroom";
@@ -18,7 +18,7 @@ const app = express();
 const server = http.createServer(app);
 const io = new Server(server, {
   cors: {
-    origin: process.env.NEXT_PUBLIC_CMS_URL || "http://localhost:3001/", // Your CMS frontend
+    origin: process.env.NEXT_PUBLIC_CMS_URL || "http://localhost:3001",
     credentials: true,
   },
 });
@@ -28,12 +28,14 @@ const AUTH_SECRET = process.env.AUTH_SECRET || "this-is-a-secure-secret";
 
 app.use(cors());
 app.use(express.json());
-app.use('/messages',authMiddleware , messagesRouter);
-app.use('/sendmessage',authMiddleware , sendmessageRouter);
+app.use('/messages', authMiddleware, messagesRouter);
+app.use("/sendmessage", authMiddleware, createSendMessageRouter(io));
 app.use('/users', usersRouter);
-app.use('/chatroom',authMiddleware , chatroomRouter);
-app.use('/getchatroom' ,authMiddleware, getchatroomRouter);
+app.use('/chatroom', authMiddleware, chatroomRouter);
+app.use('/getchatroom', authMiddleware, getchatroomRouter);
 
+// Store the io instance in the app for use in routes
+app.set('io', io);
 
 type GraphQLVariables = Record<string, any>;
 
@@ -87,65 +89,17 @@ io.on("connection", (socket: Socket) => {
   const user = socket.data.user as JwtUserPayload;
   console.log("🔌 User connected:", user?.email);
 
+  // Join room for user-specific updates
+  if (user?.id) {
+    socket.join(`user-${user.id}`);
+    console.log(`✅ ${user.email} joined user room`);
+  }
+
   socket.on("join-room", (chatRoomId: string) => {
     socket.join(chatRoomId);
-    console.log(`✅ ${user.email} joined room ${chatRoomId}`);
+    console.log(`✅ ${user.email} joined chat room ${chatRoomId}`);
   });
 
-  socket.on(
-    "send-message",
-    async ({
-      chatRoomId,
-      content,
-    }: {
-      chatRoomId: string;
-      content: string;
-    }) => {
-      try {
-        const mutation = `
-          mutation CreateMessage($content: String!, $chatRoomId: ID!, $senderId: ID!) {
-            createMessage(data: {
-              content: $content,
-              chatRoom: { connect: { id: $chatRoomId } },
-              sender: { connect: { id: $senderId } }
-            }) {
-              id
-              content
-              createdAt
-              sender {
-                id
-                name
-              }
-            }
-          }
-        `;
-
-        const data = await graphqlRequest<{
-          createMessage: {
-            id: string;
-            content: string;
-            createdAt: string;
-            sender: { id: string; name: string };
-          };
-        }>(
-          mutation,
-          {
-            content,
-            chatRoomId,
-            senderId: user.id,
-          },
-          socket.handshake.auth.token
-        );
-
-        const savedMessage = data.createMessage;
-        console.log(data);
-        io.to(chatRoomId).emit("new-message", savedMessage);
-        console.log("📤 Emitting message to room:", chatRoomId, savedMessage);
-      } catch (err) {
-        console.error("❌ Error sending message:", (err as Error).message);
-      }
-    }
-  );
   socket.on("disconnect", () => {
     console.log("❌ User disconnected:", user?.email);
   });

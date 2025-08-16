@@ -11,6 +11,7 @@ interface AuthRequest extends Request {
       name: string;
     };
   };
+  app: any; // Changed from optional to required
 }
 
 const router = express.Router();
@@ -54,11 +55,16 @@ router.post('/', async (req: AuthRequest, res) => {
       participants: allParticipantIds.map((id: string) => ({ id })),
     };
 
-    console.log('🚀 Sending mutation with variables:', variables);
-
     const response = await graphqlRequest(mutation, variables);
+    const newChatRoom = response.createChatRoom;
 
-    return res.json(response.createChatRoom);
+    // Broadcast the new chat room to all participants
+    const io = req.app.get('io');
+    allParticipantIds.forEach((participantId: string) => {
+      io.to(`user-${participantId}`).emit('new-chat-room', newChatRoom);
+    });
+
+    return res.json(newChatRoom);
   } catch (error: any) {
     console.error('❌ Error creating chat room:', error?.response?.errors || error?.message || error);
     return res.status(500).json({
