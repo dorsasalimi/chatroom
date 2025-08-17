@@ -13,6 +13,46 @@ const router = express.Router();
  * GET /chatrooms
  * Fetch all chat rooms with participants and latest message.
  */
+router.get("/:id", async (req: AuthenticatedAppRequest, res) => {
+  const chatRoomId = req.params.id;
+  const userId = req.user?.id;
+
+  if (!userId) return res.status(401).json({ error: "UNAUTHORIZED" });
+
+  try {
+    const query = `
+  query GetChatRoom($id: ID!) {
+    chatRoom(where: { id: $id }) {
+      id
+      name
+      participants {
+        id
+        name
+        imageUrl
+      }
+      messages(orderBy: { createdAt: desc }, take: 50) {
+        id
+        content
+        createdAt
+        sender { id name imageUrl }
+      }
+    }
+  }
+`;
+
+    const variables = { id: chatRoomId };
+    const { chatRoom } = await graphqlRequest(query, variables);
+
+    if (!chatRoom || !chatRoom.participants.some((p: any) => p.id === userId)) {
+      return res.status(403).json({ error: "NOT_A_PARTICIPANT" });
+    }
+
+    res.json({ chatRoom });
+  } catch (err) {
+    console.error("❌ Error fetching chatroom by ID:", err);
+    res.status(500).json({ error: "SERVER_ERROR_FETCHING_CHATROOM" });
+  }
+});
 router.get("/", async (req: AuthenticatedAppRequest, res) => {
   const userId = req.user?.id;
 
@@ -91,10 +131,13 @@ router.patch("/:id", async (req: AuthenticatedAppRequest, res) => {
     `;
 
     const { chatRoom } = await graphqlRequest(checkParticipantQuery, {
-      chatRoomId
+      chatRoomId,
     });
 
-    if (!chatRoom || !chatRoom.participants.some((p: { id: string }) => p.id === userId)) {
+    if (
+      !chatRoom ||
+      !chatRoom.participants.some((p: { id: string }) => p.id === userId)
+    ) {
       return res.status(403).json({ error: "NOT_A_PARTICIPANT" });
     }
 
@@ -120,9 +163,9 @@ router.patch("/:id", async (req: AuthenticatedAppRequest, res) => {
     const updatedRoom = result.updateChatRoom;
 
     // Broadcast the update to all participants
-    const io = req.app.get('io');
+    const io = req.app.get("io");
     updatedRoom.participants.forEach((participant: { id: string }) => {
-      io.to(`user-${participant.id}`).emit('chat-room-updated', updatedRoom);
+      io.to(`user-${participant.id}`).emit("chat-room-updated", updatedRoom);
     });
 
     res.json(updatedRoom);
@@ -157,11 +200,16 @@ router.delete("/:id", async (req: AuthenticatedAppRequest, res) => {
 
     const { chatRoom } = await graphqlRequest(getRoomQuery, { chatRoomId });
 
-    if (!chatRoom || !chatRoom.participants.some((p: { id: string }) => p.id === userId)) {
+    if (
+      !chatRoom ||
+      !chatRoom.participants.some((p: { id: string }) => p.id === userId)
+    ) {
       return res.status(403).json({ error: "NOT_A_PARTICIPANT" });
     }
 
-    const participantIds = chatRoom.participants.map((p: { id: string }) => p.id);
+    const participantIds = chatRoom.participants.map(
+      (p: { id: string }) => p.id
+    );
 
     // Delete the chat room
     const mutation = `
@@ -175,9 +223,11 @@ router.delete("/:id", async (req: AuthenticatedAppRequest, res) => {
     const result = await graphqlRequest(mutation, { id: chatRoomId });
 
     // Broadcast the deletion to all participants
-    const io = req.app.get('io');
+    const io = req.app.get("io");
     participantIds.forEach((participantId: string) => {
-      io.to(`user-${participantId}`).emit('chat-room-deleted', { id: chatRoomId });
+      io.to(`user-${participantId}`).emit("chat-room-deleted", {
+        id: chatRoomId,
+      });
     });
 
     res.json({ success: true, deletedId: result.deleteChatRoom.id });
