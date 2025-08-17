@@ -92,31 +92,34 @@ export default function createSendMessageRouter(io: SocketIOServer) {
         ? CMS_BASE_URL + rawMessage.sender.imageUrl
         : undefined;
 
-const normalizedMessage = {
-  id: rawMessage.id,
-  content: rawMessage.content,
-  createdAt: rawMessage.createdAt ?? new Date().toISOString(),
-  sender: {
-    id: rawMessage.sender.id,
-    name: rawMessage.sender.name,
-    imageUrl: fullImageUrl,
-  },
-  chatRoomId: rawMessage.chatRoom.id,
-  tempId: req.body.tempId, // Include the tempId from the request
-  replyTo: rawMessage.replyTo
-    ? {
-        id: rawMessage.replyTo.id,
-        content: rawMessage.replyTo.content,
+      const normalizedMessage = {
+        id: rawMessage.id,
+        content: rawMessage.content,
+        createdAt: rawMessage.createdAt ?? new Date().toISOString(),
         sender: {
-          id: rawMessage.replyTo.sender.id,
-          name: rawMessage.replyTo.sender.name,
+          id: rawMessage.sender.id,
+          name: rawMessage.sender.name,
+          imageUrl: fullImageUrl,
         },
-      }
-    : undefined,
-};
+        chatRoomId: rawMessage.chatRoom.id,
+        tempId: req.body.tempId, // Include the tempId from the request
+        replyTo: rawMessage.replyTo
+          ? {
+              id: rawMessage.replyTo.id,
+              content: rawMessage.replyTo.content,
+              sender: {
+                id: rawMessage.replyTo.sender.id,
+                name: rawMessage.replyTo.sender.name,
+              },
+            }
+          : undefined,
+      };
 
       // ✅ Broadcast to everyone in this chat room
-      io.to(normalizedMessage.chatRoomId).emit("new-message", normalizedMessage);
+      io.to(normalizedMessage.chatRoomId).emit(
+        "new-message",
+        normalizedMessage
+      );
 
       res.json(normalizedMessage);
     } catch (err: any) {

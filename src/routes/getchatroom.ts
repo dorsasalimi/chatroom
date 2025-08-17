@@ -1,3 +1,4 @@
+//src/routes/getchatroom.ts
 import express from "express";
 import { graphqlRequest } from "../lib/graphqlClient";
 import { AuthenticatedRequest } from "../middleware/authMiddleware";
@@ -78,7 +79,7 @@ router.patch("/:id", async (req: AuthenticatedAppRequest, res) => {
   try {
     // First check if user is a participant
     const checkParticipantQuery = `
-      query ($chatRoomId: ID!, $userId: ID!) {
+      query ($chatRoomId: ID!) {
         chatRoom(where: { id: $chatRoomId }) {
           id
           name
@@ -90,8 +91,7 @@ router.patch("/:id", async (req: AuthenticatedAppRequest, res) => {
     `;
 
     const { chatRoom } = await graphqlRequest(checkParticipantQuery, {
-      chatRoomId,
-      userId,
+      chatRoomId
     });
 
     if (!chatRoom || !chatRoom.participants.some((p: { id: string }) => p.id === userId)) {
@@ -109,6 +109,8 @@ router.patch("/:id", async (req: AuthenticatedAppRequest, res) => {
           name
           participants {
             id
+            name
+            imageUrl
           }
         }
       }
