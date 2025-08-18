@@ -69,7 +69,9 @@ io.on("connection", (socket: Socket) => {
     console.log("User disconnected:", user?.email);
   });
 });
-
-server.listen(3004, () => {
-  console.log("🚀 Chat server running on http://localhost:3004");
+server.listen(3000, () => {
+  console.log("🚀 Chat server running on http://localhost:3000");
 });
+// server.listen(3004, () => {
+//   console.log("🚀 Chat server running on http://localhost:3004");
+// });
