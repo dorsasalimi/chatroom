@@ -151,6 +151,6 @@ io.on("connection", (socket: Socket) => {
   });
 });
 
-server.listen(3004, () => {
-  console.log("🚀 Chat server running on http://localhost:3004");
+server.listen(3000, () => {
+  console.log("🚀 Chat server running on http://localhost:3000");
 });

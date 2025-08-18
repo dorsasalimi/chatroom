@@ -5,7 +5,7 @@ export async function graphqlRequest<T = any>(
   variables?: Record<string, any>,
   token?: string
 ): Promise<T> {
-  const response = await fetch("http://localhost:3000/api/graphql", {
+  const response = await fetch(process.env.NEXT_PUBLIC_GRAPHQL_URL || "http://localhost:3000/api/graphql", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",

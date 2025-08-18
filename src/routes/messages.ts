@@ -7,7 +7,7 @@ import { AuthenticatedRequest } from "../middleware/authMiddleware";
 const router = Router();
 
 // Your CMS public URL where images are served from
-const CMS_BASE_URL = "http://localhost:3001";
+const CMS_BASE_URL = process.env.NEXT_PUBLIC_CMS_URL || "http://localhost:3001";
 
 // Replace with your actual JWT secret
 const AUTH_SECRET = process.env.AUTH_SECRET || "this-is-a-secure-secret";
